@@ -1,8 +1,11 @@
-﻿using Neo.Core;
+using Neo.Core;
+using Neo.Implementations.Wallets.EntityFramework;
 using Neo.IO.Json;
 using Neo.Wallets;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security;
 
 namespace Neo.Network.RPC
 {
@@ -17,6 +20,28 @@ namespace Neo.Network.RPC
         {
             switch (method)
             {
+                case "createwallet":
+                    if (Program.Wallet != null)
+                        throw new RpcException(-400, "Wallet is exist.");
+                    else
+                    {
+                        if (_params.Count < 1)
+                            throw new RpcException(-400, "Params size error.");
+
+                        String password = _params[0].AsString();
+                        String name = _params[1].AsString();
+
+                        Program.Wallet = UserWallet.Create($"/home/ubuntu/{name}.db3", password);
+                        Contract contract = Program.Wallet.GetContracts().First(p => p.IsStandard);
+                        KeyPair key = Program.Wallet.GetKey(contract.PublicKeyHash);
+                        String address = contract.Address;
+                        String pubKey = key.PublicKey.EncodePoint(true).ToHexString();
+
+                        JObject json = new JObject();
+                        json["address"] = address;
+                        json["pubKey"] = pubKey;
+                        return json;
+                    }
                 case "getbalance":
                     if (Program.Wallet == null)
                         throw new RpcException(-400, "Access denied.");
